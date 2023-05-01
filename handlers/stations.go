@@ -3,7 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	db "hsk-bikeapp-solita/database"
+	db "hsk-bikeapp-solita-cloud/database"
 	"log"
 	"strconv"
 )
@@ -16,7 +16,6 @@ func StationsGet(newRequest ReqQueryParameters) (result string, err error) {
 		return "", fmt.Errorf("%v is an invalid ID", newRequest.ID)
 	}
 
-	// Open database connection
 	DB, err = db.OpenDatabase()
 	if err != nil {
 		log.Println("Error opening database:", err)
@@ -24,7 +23,6 @@ func StationsGet(newRequest ReqQueryParameters) (result string, err error) {
 	}
 	defer DB.CloseDatabase()
 
-	// Create filter based on query parameters
 	filter := db.StationFilter{}
 	if newRequest.ID != "" {
 		filter.ID, err = strconv.Atoi(newRequest.ID)
@@ -34,7 +32,6 @@ func StationsGet(newRequest ReqQueryParameters) (result string, err error) {
 		}
 	}
 
-	// Get stations based on filter
 	var station db.Station
 	var stations []db.Station
 	if filter.ID != 0 {
@@ -51,7 +48,6 @@ func StationsGet(newRequest ReqQueryParameters) (result string, err error) {
 		}
 	}
 
-	// Marshal response into JSON
 	var responseJSON []byte
 	if station != (db.Station{}) {
 		responseJSON, err = json.Marshal(station)

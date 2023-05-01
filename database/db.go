@@ -55,8 +55,8 @@ type StationFilter struct {
 }
 
 type JourneyFilter struct {
-	LastId int
-	Limit  int
+	ID    int
+	Limit int
 }
 
 func OpenDatabase() (Db, error) {
@@ -64,7 +64,7 @@ func OpenDatabase() (Db, error) {
 	dbHost := "INSERT-HOST-ADDRESS"
 	dbPort := "INSERT-PORT"
 	dbUser := "INSERT-USER"
-	dbPassword := "INSERT-PASSWOD"
+	dbPassword := "INSERT-PASSWORD"
 	dbName := "INSERT-DATABASE-NAME"
 
 	dbConnectionString := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPassword, dbHost, dbPort, dbName)
@@ -155,4 +155,35 @@ func (db *Db) GetSingleStation(filter StationFilter) (station Station, err error
 	}
 
 	return station, nil
+}
+
+func (db *Db) GetLastJourneyId() (lastJourney JourneyFilter, err error) {
+	row := db.connection.QueryRow("SELECT MAX(id) FROM all_journeys;")
+	err = row.Scan(&lastJourney.ID)
+	if err != nil {
+		return lastJourney, err
+	}
+	return lastJourney, nil
+}
+
+func (db *Db) GetJourneys(filter JourneyFilter) (journeys []Journey, err error) {
+	var journey Journey
+
+	query := fmt.Sprintf("SELECT * FROM all_journeys WHERE id > %v ORDER BY id LIMIT %v", filter.ID, filter.Limit)
+	rows, err := db.connection.Query(query)
+
+	if err != nil {
+		return journeys, err
+	}
+
+	for rows.Next() {
+		err := rows.Scan(&journey.ID, &journey.Departure, &journey.Return, &journey.DepartureStationId, &journey.DepartureStationName, &journey.ReturnStationId, &journey.ReturnStationName, &journey.CoveredDistanceM, &journey.DurationSec)
+		if err != nil {
+			return journeys, err
+		}
+		journeys = append(journeys, journey)
+	}
+
+	defer rows.Close()
+	return journeys, err
 }
