@@ -74,9 +74,41 @@ func StationsGet(newRequest ReqQueryParameters) events.APIGatewayProxyResponse {
 	}
 }
 
-func StationsPost(newRequest ReqQueryParameters) events.APIGatewayProxyResponse {
+func StationsPost(request events.APIGatewayProxyRequest) events.APIGatewayProxyResponse {
+	var err error
+
+	DB, err = db.OpenDatabase()
+	if err != nil {
+		log.Println("Error opening database:", err)
+		return createErrorResponse(http.StatusInternalServerError, "an error has been produced trying to access the database")
+	}
+	defer DB.CloseDatabase()
+
+	var newStation db.Station
+	if err = json.Unmarshal([]byte(request.Body), &newStation); err != nil {
+		return events.APIGatewayProxyResponse{
+			StatusCode: http.StatusBadRequest,
+			Body:       fmt.Sprintf("invalid request body: %v", err),
+		}
+	}
+
+	validationErrors := DB.ValidateNewStation(newStation)
+	if len(validationErrors) > 0 {
+		return events.APIGatewayProxyResponse{
+			StatusCode: http.StatusBadRequest,
+			Body:       fmt.Sprintf("invalid new station: %v", validationErrors),
+		}
+	}
+
+	if err = DB.AddNewStation(newStation); err != nil {
+		return events.APIGatewayProxyResponse{
+			StatusCode: http.StatusInternalServerError,
+			Body:       fmt.Sprintf("failed to add new station: %v", err),
+		}
+	}
+
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
-		Body:       "POST method will be implemented soon",
+		Body:       "New station added successfully!",
 	}
 }

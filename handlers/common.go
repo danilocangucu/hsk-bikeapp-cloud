@@ -20,21 +20,22 @@ const (
 
 type APIHandler struct {
 	lastRequestTime time.Time
-	newRequest      ReqQueryParameters
 }
 
-var handlerMap = map[string]func(ReqQueryParameters) events.APIGatewayProxyResponse{
-	APIStations: func(request ReqQueryParameters) events.APIGatewayProxyResponse {
-		if request.Method == "GET" {
-			return StationsGet(request)
-		} else if request.Method == "POST" {
+var handlerMap = map[string]func(events.APIGatewayProxyRequest) events.APIGatewayProxyResponse{
+	APIStations: func(request events.APIGatewayProxyRequest) events.APIGatewayProxyResponse {
+		if request.HTTPMethod == "GET" {
+			reqQueryParameters := extractReqQueryParameters(request)
+			return StationsGet(reqQueryParameters)
+		} else if request.HTTPMethod == "POST" {
 			return StationsPost(request)
 		} else {
 			return createErrorResponse(http.StatusMethodNotAllowed, "only GET and POST requests are allowed for stations api")
 		}
 	},
-	APIJourneys: func(request ReqQueryParameters) events.APIGatewayProxyResponse {
-		return JourneysGet(request)
+	APIJourneys: func(request events.APIGatewayProxyRequest) events.APIGatewayProxyResponse {
+		reqQueryParameters := extractReqQueryParameters(request)
+		return JourneysGet(reqQueryParameters)
 	},
 }
 
@@ -52,26 +53,22 @@ func (h *APIHandler) HandleRequest(request events.APIGatewayProxyRequest) (respo
 		return createErrorResponse(http.StatusBadRequest, "missing required query parameter: api"), nil
 	}
 
-	h.newRequest.API = api
-
 	if id, ok := queryParameters["id"]; ok && id != "" {
 		if id == "0" {
 			return createErrorResponse(http.StatusBadRequest, "0 is an invalid ID"), nil
 		}
-
-		h.newRequest.ID = id
 	}
 
 	if queryParameters["id"] == "" {
-		h.newRequest.ID = "0"
+		request.QueryStringParameters["id"] = "0"
 	}
 
-	h.newRequest.Method = request.HTTPMethod
-
-	return handleAPIRequest(h.newRequest.API, h.newRequest), nil
+	return handleAPIRequest(request), nil
 }
 
-func handleAPIRequest(api string, request ReqQueryParameters) events.APIGatewayProxyResponse {
+func handleAPIRequest(request events.APIGatewayProxyRequest) events.APIGatewayProxyResponse {
+	api := request.QueryStringParameters["api"]
+
 	handler, ok := handlerMap[api]
 	if !ok {
 		return createErrorResponse(http.StatusBadRequest, api+" api does not exist, try stations or journeys.")
@@ -84,5 +81,13 @@ func createErrorResponse(statusCode int, message string) events.APIGatewayProxyR
 	return events.APIGatewayProxyResponse{
 		StatusCode: statusCode,
 		Body:       message,
+	}
+}
+
+func extractReqQueryParameters(request events.APIGatewayProxyRequest) ReqQueryParameters {
+	return ReqQueryParameters{
+		API:    request.QueryStringParameters["api"],
+		ID:     request.QueryStringParameters["id"],
+		Method: request.HTTPMethod,
 	}
 }

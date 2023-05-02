@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -184,4 +185,78 @@ func (db *Db) GetJourneys(filter JourneyFilter) (journeys []Journey, err error) 
 
 	defer rows.Close()
 	return journeys, err
+}
+
+func (db *Db) ValidateNewStation(newStation Station) (errors []error) {
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if _, err := db.GetSingleStation(StationFilter{ID: newStation.ID}); err == nil {
+			log.Printf("error validating station id %v: %v", newStation.ID, err)
+			errors = append(errors, fmt.Errorf("station with ID %d already exists", newStation.ID))
+		}
+	}()
+
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		if _, err := db.GetSingleStation(StationFilter{Nimi: newStation.Nimi}); err == nil {
+			log.Printf("error validating station Finnish name %v: %v", newStation.Nimi, err)
+			errors = append(errors, fmt.Errorf("station with Finnish name '%s' already exists", newStation.Nimi))
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		if _, err := db.GetSingleStation(StationFilter{Namn: newStation.Namn}); err == nil {
+			log.Printf("error validating station Swedish name %v: %v", newStation.Namn, err)
+			errors = append(errors, fmt.Errorf("station with Swedish name '%s' already exists", newStation.Namn))
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		if _, err := db.GetSingleStation(StationFilter{Name: newStation.Name}); err == nil {
+			log.Printf("error validating station English name %v: %v", newStation.Name, err)
+			errors = append(errors, fmt.Errorf("Station with English name '%s' already exists", newStation.Name))
+		}
+	}()
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		if _, err := db.GetSingleStation(StationFilter{Osoite: newStation.Osoite}); err == nil {
+			log.Printf("error validating station Finnish address %v: %v", newStation.Osoite, err)
+			errors = append(errors, fmt.Errorf("Station with Finnish address '%s' already exists", newStation.Osoite))
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		if _, err := db.GetSingleStation(StationFilter{Adress: newStation.Adress}); err == nil {
+			log.Printf("error validating station Swedish address %v: %v", newStation.Adress, err)
+			errors = append(errors, fmt.Errorf("Station with Swedish address '%s' already exists", newStation.Adress))
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if _, err := db.GetSingleStation(StationFilter{Latitude: newStation.Latitude, Longitude: newStation.Longitude}); err == nil {
+			log.Printf("error validating station coordinates (%f, %f): %v", newStation.Latitude, newStation.Longitude, err)
+			errors = append(errors, fmt.Errorf("Station with coordinates (%f, %f) already exists", newStation.Latitude, newStation.Longitude))
+		}
+	}()
+
+	wg.Wait()
+
+	return errors
+}
+
+func (db *Db) AddNewStation(newStation Station) error {
+	query := `INSERT INTO stations (ID, Nimi, Namn, Name, Osoite, Adress, Kaupunki, Stad, Operaattor, Kapasiteet, x, y, JourneysFrom, JourneysTo) 
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+
+	_, err := db.connection.Exec(query, newStation.ID, newStation.Nimi, newStation.Namn, newStation.Name, newStation.Osoite, newStation.Adress, newStation.Kaupunki, newStation.Stad, newStation.Operaattor, newStation.Kapasiteet, newStation.Latitude, newStation.Longitude, newStation.JourneysFrom, newStation.JourneysTo)
+
+	return err
 }
