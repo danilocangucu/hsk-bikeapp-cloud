@@ -60,7 +60,6 @@ type JourneyFilter struct {
 }
 
 func OpenDatabase() (Db, error) {
-
 	dbHost := "INSERT-HOST-ADDRESS"
 	dbPort := "INSERT-PORT"
 	dbUser := "INSERT-USER"
@@ -78,7 +77,6 @@ func OpenDatabase() (Db, error) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("db opened, returning")
 
 	return Db{connection: db}, nil
 }

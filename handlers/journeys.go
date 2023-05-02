@@ -5,19 +5,28 @@ import (
 	"fmt"
 	db "hsk-bikeapp-solita-cloud/database"
 	"log"
+	"net/http"
 	"strconv"
+
+	"github.com/aws/aws-lambda-go/events"
 )
 
-func JourneysGet(newRequest ReqQueryParameters) (result string, err error) {
+func JourneysGet(newRequest ReqQueryParameters) (response events.APIGatewayProxyResponse) {
+	var err error
+
+	if newRequest.Method != "GET" {
+		return createErrorResponse(http.StatusBadRequest, "only GET method is allowed for journeys api")
+	}
+
 	if newRequest.ID < "0" {
 		log.Println("invalid query parameter:", newRequest.ID)
-		return "", fmt.Errorf("%v is an invalid ID", newRequest.ID)
+		return createErrorResponse(http.StatusBadRequest, fmt.Sprintf("%v is an invalid ID", newRequest.ID))
 	}
 
 	DB, err = db.OpenDatabase()
 	if err != nil {
 		log.Println("Error opening database:", err)
-		return "", fmt.Errorf("an error has been produced trying to access the database")
+		return createErrorResponse(http.StatusInternalServerError, "an error has been produced trying to access the database")
 	}
 	defer DB.CloseDatabase()
 
@@ -26,19 +35,19 @@ func JourneysGet(newRequest ReqQueryParameters) (result string, err error) {
 		filter.ID, err = strconv.Atoi(newRequest.ID)
 		if err != nil {
 			log.Println("Invalid query parameter:", err)
-			return "", fmt.Errorf("%v invalid ID request for journeys", filter.ID)
+			return createErrorResponse(http.StatusBadRequest, fmt.Sprintf("%v invalid ID request for journeys", filter.ID))
 		}
 	}
 
 	lastJourney, err := DB.GetLastJourneyId()
 	if err != nil {
 		log.Println("Error while getting last journey ID:", err)
-		return "", fmt.Errorf("error trying to retreive a journey, please try again later")
+		return createErrorResponse(http.StatusInternalServerError, "error trying to retreive a journey, please try again later")
 	}
 
 	if filter.ID > lastJourney.ID {
 		log.Printf("Error while getting batch with starting id ID %v: %v", filter.ID, err)
-		return "", fmt.Errorf("%v is an invalid ID request for journeys", filter.ID)
+		return createErrorResponse(http.StatusBadRequest, fmt.Sprintf("%v is an invalid ID request for journeys", filter.ID))
 	}
 
 	filter.Limit = 3000
@@ -50,7 +59,7 @@ func JourneysGet(newRequest ReqQueryParameters) (result string, err error) {
 	journeys, err := DB.GetJourneys(filter)
 	if err != nil {
 		log.Println("Error while getting journeys:", err)
-		return "", fmt.Errorf("error while receiving stations, please try again later")
+		return createErrorResponse(http.StatusInternalServerError, "error while receiving stations, please try again later")
 	}
 
 	var responseJSON []byte
@@ -58,10 +67,12 @@ func JourneysGet(newRequest ReqQueryParameters) (result string, err error) {
 		responseJSON, err = json.Marshal(journeys)
 		if err != nil {
 			log.Println("error while marshalling journeys:", err)
-			return "", fmt.Errorf("oops! something went wrong while processing your journeys")
+			return createErrorResponse(http.StatusInternalServerError, "oops! something went wrong while processing your journeys")
 		}
 	}
 
-	result = string(responseJSON)
-	return result, nil
+	return events.APIGatewayProxyResponse{
+		StatusCode: http.StatusOK,
+		Body:       string(responseJSON),
+	}
 }

@@ -5,21 +5,26 @@ import (
 	"fmt"
 	db "hsk-bikeapp-solita-cloud/database"
 	"log"
+	"net/http"
 	"strconv"
+
+	"github.com/aws/aws-lambda-go/events"
 )
 
 var DB db.Db
 
-func StationsGet(newRequest ReqQueryParameters) (result string, err error) {
+func StationsGet(newRequest ReqQueryParameters) events.APIGatewayProxyResponse {
+	var err error
+
 	if newRequest.ID < "0" {
 		log.Println("invalid query parameter:", newRequest.ID)
-		return "", fmt.Errorf("%v is an invalid ID", newRequest.ID)
+		return createErrorResponse(http.StatusBadRequest, fmt.Sprintf("%v is an invalid ID", newRequest.ID))
 	}
 
 	DB, err = db.OpenDatabase()
 	if err != nil {
 		log.Println("Error opening database:", err)
-		return "", fmt.Errorf("an error has been produced trying to access the database")
+		return createErrorResponse(http.StatusInternalServerError, "an error has been produced trying to access the database")
 	}
 	defer DB.CloseDatabase()
 
@@ -28,7 +33,7 @@ func StationsGet(newRequest ReqQueryParameters) (result string, err error) {
 		filter.ID, err = strconv.Atoi(newRequest.ID)
 		if err != nil {
 			log.Println("Invalid query parameter:", err)
-			return "", fmt.Errorf("%v is an invalid ID", err)
+			return createErrorResponse(http.StatusBadRequest, fmt.Sprintf("%v is an invalid ID", err))
 		}
 	}
 
@@ -37,14 +42,14 @@ func StationsGet(newRequest ReqQueryParameters) (result string, err error) {
 	if filter.ID != 0 {
 		station, err = DB.GetSingleStation(filter)
 		if err != nil {
-			log.Printf("Error while getting station ID=%v: %v", filter.ID, err)
-			return "", fmt.Errorf("error while getting station ID %v", filter.ID)
+			log.Printf("Error while getting station ID %v: %v", filter.ID, err)
+			return createErrorResponse(http.StatusInternalServerError, fmt.Sprintf("error while getting station ID %v", filter.ID))
 		}
 	} else if filter.ID == 0 {
 		stations, err = DB.GetAllStations()
 		if err != nil {
 			log.Println("Error while getting stations:", err)
-			return "", fmt.Errorf("error while getting stations")
+			return createErrorResponse(http.StatusInternalServerError, "error while getting stations")
 		}
 	}
 
@@ -53,16 +58,25 @@ func StationsGet(newRequest ReqQueryParameters) (result string, err error) {
 		responseJSON, err = json.Marshal(station)
 		if err != nil {
 			log.Println("error while marshalling station:", err)
-			return "", fmt.Errorf("oops! something went wrong while processing your station request")
+			return createErrorResponse(http.StatusInternalServerError, "oops! something went wrong while processing your station request")
 		}
 	} else {
 		responseJSON, err = json.Marshal(stations)
 		if err != nil {
 			log.Println("error while marshalling stations:", err)
-			return "", fmt.Errorf("oops! something went wrong while processing your stations request")
+			return createErrorResponse(http.StatusInternalServerError, "oops! something went wrong while processing your stations request")
 		}
 	}
 
-	result = string(responseJSON)
-	return result, nil
+	return events.APIGatewayProxyResponse{
+		StatusCode: http.StatusOK,
+		Body:       string(responseJSON),
+	}
+}
+
+func StationsPost(newRequest ReqQueryParameters) events.APIGatewayProxyResponse {
+	return events.APIGatewayProxyResponse{
+		StatusCode: http.StatusOK,
+		Body:       "POST method will be implemented soon",
+	}
 }
