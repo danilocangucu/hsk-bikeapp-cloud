@@ -58,13 +58,13 @@ func StationsGet(newRequest ReqQueryParameters) events.APIGatewayProxyResponse {
 		responseJSON, err = json.Marshal(station)
 		if err != nil {
 			log.Println("error while marshalling station:", err)
-			return createErrorResponse(http.StatusInternalServerError, "oops! something went wrong while processing your station request")
+			return createErrorResponse(http.StatusInternalServerError, "oops! something went wrong while processing your station newRequest")
 		}
 	} else {
 		responseJSON, err = json.Marshal(stations)
 		if err != nil {
 			log.Println("error while marshalling stations:", err)
-			return createErrorResponse(http.StatusInternalServerError, "oops! something went wrong while processing your stations request")
+			return createErrorResponse(http.StatusInternalServerError, "oops! something went wrong while processing your stations newRequest")
 		}
 	}
 
@@ -74,7 +74,7 @@ func StationsGet(newRequest ReqQueryParameters) events.APIGatewayProxyResponse {
 	}
 }
 
-func StationsPost(request events.APIGatewayProxyRequest) events.APIGatewayProxyResponse {
+func StationsPost(newRequest events.APIGatewayProxyRequest) events.APIGatewayProxyResponse {
 	var err error
 
 	DB, err = db.OpenDatabase()
@@ -85,30 +85,37 @@ func StationsPost(request events.APIGatewayProxyRequest) events.APIGatewayProxyR
 	defer DB.CloseDatabase()
 
 	var newStation db.Station
-	if err = json.Unmarshal([]byte(request.Body), &newStation); err != nil {
-		return events.APIGatewayProxyResponse{
-			StatusCode: http.StatusBadRequest,
-			Body:       fmt.Sprintf("invalid request body: %v", err),
-		}
+	if err = json.Unmarshal([]byte(newRequest.Body), &newStation); err != nil {
+		return createErrorResponse(http.StatusBadRequest, fmt.Sprintf("invalid request body: %v", err))
 	}
 
 	validationErrors := DB.ValidateNewStation(newStation)
 	if len(validationErrors) > 0 {
-		return events.APIGatewayProxyResponse{
-			StatusCode: http.StatusBadRequest,
-			Body:       fmt.Sprintf("invalid new station: %v", validationErrors),
+		errJsonString, err := errorsToJsonString(validationErrors)
+		if err != nil {
+			return createErrorResponse(http.StatusInternalServerError, fmt.Sprintf("failed creating validation errors: %v", err))
 		}
+		return createErrorResponse(http.StatusBadRequest, errJsonString)
 	}
 
 	if err = DB.AddNewStation(newStation); err != nil {
-		return events.APIGatewayProxyResponse{
-			StatusCode: http.StatusInternalServerError,
-			Body:       fmt.Sprintf("failed to add new station: %v", err),
-		}
+		return createErrorResponse(http.StatusInternalServerError, fmt.Sprintf("failed to add new station: %v", err))
 	}
 
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
-		Body:       "New station added successfully!",
+		Body:       "new station added successfully!",
 	}
+}
+
+func errorsToJsonString(errs []error) (string, error) {
+	strSlice := make([]string, len(errs))
+	for i, err := range errs {
+		strSlice[i] = err.Error()
+	}
+	jsonBytes, err := json.Marshal(strSlice)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonBytes), nil
 }

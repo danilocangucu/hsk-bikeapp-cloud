@@ -149,7 +149,7 @@ func (db *Db) GetSingleStation(filter StationFilter) (station Station, err error
 
 	err = db.connection.QueryRow(query, args...).Scan(&station.FID, &station.ID, &station.Nimi, &station.Namn, &station.Name, &station.Osoite, &station.Adress, &station.Kaupunki, &station.Stad, &station.Operaattor, &station.Kapasiteet, &station.Latitude, &station.Longitude, &station.JourneysFrom, &station.JourneysTo)
 	if err != nil {
-		log.Println("db.go error Error while getting station:", err)
+		log.Println("Error while getting station:", err)
 		return Station{}, err
 	}
 
