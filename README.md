@@ -1,22 +1,32 @@
-# Cloud Backend Integration for My Helsinki City Bike Single Page App
+# Cloud Backend Integration for Helsinki City Bike SPA
 
-This repository contains additional code for my [Helsinki City Bike Single Page App](https://github.com/danilocangucu/hsk-bikeapp-solita), providing cloud backend integration using Amazon Web Services Relational Database Service (AWS RDS) and Amazon Web Services Lambda.
+Welcome! I'm Danilo, and this repository extends my [Helsinki City Bike Single Page App](https://github.com/danilocangucu/hsk-bikeapp-solita) by incorporating a cloud backend using Amazon Web Services Relational Database Service (AWS RDS) and AWS Lambda.
+
+As a newcomer to Amazon Web Services, I embarked on a two-week learning adventure, delving into AWS documentation, browsing Stack Overflow discussions, conducting Google searches, watching YouTube tutorials, and engaging with ChatGPT and Phind. This fulfilling journey not only enabled me to successfully integrate these services but also brought me immense joy and gratitude! Consequently, I've transformed this README into a tutorial-like format to help fellow AWS beginners learn and benefit from my experience.
+
+Let's dive into the cloud integration details:
 
 ## Table of Contents
 
 1. [Introduction](#introduction)
 2. [Getting Started](#getting-started)
 3. [Importing database to AWS RDS](#importing-database-to-aws-rds)
-4. [Go Backend](#go-backend)
+4. [Go-based Backend](#go-based-backend)
 5. [Lambda function on AWS](#lambda-function-on-aws)
    1) [Creating the Lambda function](#creating-the-lambda-function)
    2) [Deploying the Lambda function](#deploying-the-lambda-function)
    3) [Adding an API Gateway as a trigger](#adding-an-api-gateway-as-a-trigger)
    4) [Using the Lambda function](#using-the-lambda-function)
+      1) [Stations API](#stations-api)
+      2) [Journeys API](#journeys-api)
+6. [Conclusion](#conclusion)
+
 
 ## Introduction
 
-The code in this repository serves as a guide for integrating cloud services with the Helsinki City Bike app, as part of my Solita's Dev Academy 2023 pre-assignment's application. If you're not familiar with it, I recommend starting with the linked repository above before continuing.
+This repository provides a step-by-step guide for integrating cloud services into the Helsinki City Bike app as part of my Solita's Dev Academy 2023 pre-assignment application. If you're unfamiliar with the app, I recommend exploring the linked repository above before proceeding.
+
+The project demonstrates how to effectively utilize AWS RDS for managing databases, implement a Go-based backend, and configure Lambda functions for serverless computing.
 
 ## Getting Started
 
@@ -52,7 +62,7 @@ SHOW PROCESSLIST;
 ```
 Note that you can find the hostname, username, password, and database name in my application documents. If you encounter any issues while using these credentials, please do not hesitate to contact me through email or phone.
 
-## Go Backend
+## Go-based Backend
 
 The Go backend for this application consists of two main packages: `handlers` and `database`. The `handlers` package contains the `common.go` file, which defines an APIHandler struct and various functions to handle AWS Lambda requests for the "stations" and "journeys" APIs, with a rate limit of one request per second. The `journeys.go` file processes GET requests for the "journeys" API, while the `stations.go` file handles GET and POST requests for the "stations" API. Both involve connecting to the database, validating input, and returning appropriate responses.
 
@@ -105,7 +115,7 @@ https://2b9nuc6zm3.execute-api.eu-north-1.amazonaws.com/default/hsk-bikeapp
 
 Retrieve data by calling the two APIs present in the Lambda function: `stations` and `journeys`. To make a request, include the query parameter `api` and an optional `id` parameter. Additionally, the `stations` API can receive POST requests for adding new stations, as demonstrated in example cases 4 and 5 below.
 
-**Stations API:**
+#### Stations API
 
 1. Retrieve all stations data:
    ```
@@ -238,7 +248,7 @@ Retrieve data by calling the two APIs present in the Lambda function: `stations`
 Please be aware that the validations presented here are solely based on backend checks from the [Helsinki City Bike Single Page App](https://github.com/danilocangucu/hsk-bikeapp-solita). Frontend validations, such as address validation, are not included in this Cloud integration.
 
 
-**Journeys API:**
+#### Journeys API
 
 The Journeys API is designed to return a limited batch of journey records at a time. By default, the batch size is set to 3000 journeys. This limit can be found in the `JourneysGet` function within the `handlers/journeys.go` file, where `filter.Limit` is set to 3000.
 
@@ -319,3 +329,10 @@ The Journeys API is designed to return a limited batch of journey records at a t
    https://2b9nuc6zm3.execute-api.eu-north-1.amazonaws.com/default/hsk-bikeapp?api=journeys&id=-3000
    ```
    Error message: `-3000 is an invalid ID`
+
+### Conclusion
+In this readme, I detailed my process for integrating a cloud backend into the [Helsinki City Bike Single Page App](https://github.com/danilocangucu/hsk-bikeapp-solita) using AWS RDS and AWS Lambda. By following the steps outlined in this guide, you should be able to set up your own cloud backend and gain a comprehensive understanding of how the different components work together. I hope you found this guide both informative and straightforward to follow!
+
+While I'm confident in the clarity of this guide, I'm always looking for ways to improve. In the future, I plan to incorporate code snippets that showcase key parts of handlers and database packages. Additionally, I hope to provide screenshots of the AWS Lambda console and API Gateway configuration to make the process even more accessible to users.
+
+If you have any suggestions for how I can continue to improve this guide, please don't hesitate to share them with me. I'm always eager to hear feedback from users and improve upon my work!
